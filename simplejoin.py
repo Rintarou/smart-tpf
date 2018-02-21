@@ -95,18 +95,22 @@ def zigzag(tp1,tp2):
         elemVal2 = document.tripleid_to_string(elem[1][0],elem[1][1],elem[1][2])
         resVals.append((elemVal1,elemVal2))
 
-    select = [[] for i in range(len(resVals))]
-
-    cpt = 0
     for val in resVals:
-        select[cpt].append(val[0][0])
+
+        select = {}
+        select.update({"?s":val[0][0]})
         if triplesTP1.predicate == "?p" :
-            select[cpt].append(val[0][1])
+            select.update({"?p1":val[0][1]})
         if triplesTP1.object == "?o" :
-            select[cpt].append(val[0][2])
+            select.update({"?o1":val[0][2]})
         if triplesTP2.predicate == "?p" :
-            select[cpt].append(val[1][1])
+            select.update({"?p2":val[1][1]})
         if triplesTP2.object == "?o" :
-            select[cpt].append(val[1][2])
-        cpt = cpt + 1
-    return select
+            select.update({"?o2":val[1][2]})
+        yield select
+
+
+def paginatedZZ(tp1,tp2,offset,pgSize) :
+    result = zigzag(tp1,tp2)
+    page = itertools.islice(result,offset,(offset+pgSize))
+    return page
