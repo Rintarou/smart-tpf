@@ -1,7 +1,7 @@
 import itertools
 from hdt import *
 
-path = "datasets/dogfood.hdt"
+path = "datasets/benchmark.hdt"
 document = HDTDocument(path)
 
 def zigzag(tp1,tp2):
