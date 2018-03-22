@@ -2,6 +2,9 @@ var sparqljs = require("sparqljs");
 var ldfclient = require("ldf-client");
 var asynciterator = require("asynciterator");
 var http = require("http");
+var ldf = require('ldf-client');
+
+const ReorderingGraphPatternIterator = require('ldf-client/lib/triple-pattern-fragments/ReorderingGraphPatternIterator.js')
 
 var test_query = 'PREFIX foaf: <http://xmlns.com/foaf/0.1/> ' + 'SELECT * { ?mickey foaf:name "Mickey Mouse"@en; foaf:knows ?other. }'
 var other_query = 'SELECT * WHERE {  <http://db.uwaterloo.ca/~galuc/wsdbm/Retailer699> <http://purl.org/goodrelations/offers> ?v0 .  ?v0 <http://purl.org/goodrelations/includes> ?v1 .  ?v0 <http://purl.org/goodrelations/validThrough> ?v3 .  ?v1 <http://schema.org/printPage> ?v4 .  }'
@@ -9,6 +12,8 @@ var other_query = 'SELECT * WHERE {  <http://db.uwaterloo.ca/~galuc/wsdbm/Retail
 var testUrl =  'http://127.0.0.1:5000/star?s1=&p1=http%3A%2F%2Fwww.w3.org%2F1999%2F02%2F22-rdf-syntax-ns%23type&o1=http%3A%2F%2Fdb.uwaterloo.ca%2F~galuc%2Fwsdbm%2FRole1&s2=&p2=http%3A%2F%2Fschema.org%2Femail&o2=&page='
 
 var servUrl = 'http://localhost:5000/star'
+
+var server = new ldf.FragmentsClient('http://34.212.44.110/watDiv_100');
 
  var SparqlParser = sparqljs.Parser;
  var parser = new SparqlParser();
@@ -67,12 +72,12 @@ function evalStar(s1,p1,o1,s2,p2,o2) {
     return star;
 }
 
-var res = evalStar("","http://www.w3.org/1999/02/22-rdf-syntax-ns#type","http://db.uwaterloo.ca/~galuc/wsdbm/Role1","","http://schema.org/email","");
+var res = 0//evalStar("","http://www.w3.org/1999/02/22-rdf-syntax-ns#type","http://db.uwaterloo.ca/~galuc/wsdbm/Role1","","http://schema.org/email","");
 
-res.on('readable', function(){
-  // Ce que tu veux genre :
-  console.log(res.read());
-})
+// res.on('readable', function(){
+//   // Ce que tu veux genre :
+//   console.log(res.read());
+// })
 
 // var starit = new StarIterator(testUrl);
 // for (var i = 0; i < 3; i++) {
@@ -94,8 +99,8 @@ function starExtractor(query) {
   }
 
   var subjects = Object.keys(nbCountForSubject);
-  console.log("subjects: ", subjects);
-  console.log("nbCountForSubject: ", nbCountForSubject);
+  // console.log("subjects: ", subjects);
+  // console.log("nbCountForSubject: ", nbCountForSubject);
 
   var mostCountForASubject = Math.max.apply(Math, subjects.map(function(k) {
     //console.log(nbCountForSubject[k]);
@@ -108,7 +113,7 @@ function starExtractor(query) {
   // console.log(Math.max(a));
   // console.log("mostCountForASubject: ", mostCountForASubject);
 
-  console.log("Object.keys(nbCountForSubject): ",Object.keys(nbCountForSubject));
+  // console.log("Object.keys(nbCountForSubject): ",Object.keys(nbCountForSubject));
 
   var mainSubject = (function(){
     for (i = 0; i< subjects.length; i++) {
@@ -123,13 +128,16 @@ function starExtractor(query) {
   //TODO:rendre ça propre
 
   var star = [];
+  var delIndex = [];
   for (i = 0; i< query.where[0].triples.length; i++) {
     // console.log("query.where[0].triples[i].subject: ",query.where[0].triples[i].subject);
     if(query.where[0].triples[i].subject == mainSubject) {
       star.push(query.where[0].triples[i]);
-      query.where[0].triples.splice(i,1);
-      i--;
+      delIndex.push(i);
     }
+  }
+  for (var ind in delIndex) {
+    query.where[0].triples.splice(ind,1);
   }
 
   //console.log("star[0]: ", star[0]);
@@ -144,13 +152,35 @@ function starExtractor(query) {
     }
   }
 
-  return star;
+  var s1 = star[0].subject;
+  var p1 = star[0].predicate;
+  var o1 = star[0].object;
+  var s2 = star[1].subject;
+  var p2 = star[1].predicate;
+  var o2 = star[1].object;
+
+  var res = evalStar(s1,p1,o1,s2,p2,o2);
+  var options = {
+    fragmentsClient : server
+  }
+
+  let iterator = new ReorderingGraphPatternIterator(res, query, options)
+  // res.on('readable', function(){
+  //   // Ce que tu veux genre :
+  //   console.log(res.read());
+  // })
+
+  return iterator;
 }
 
+//reoarderingraphpatterniterator(iteraotr, query, options(json server etc))
+
 //console.log("testq: ", parser.parse(test_query));
-console.log("parsedQuery: ", parsedQuery.where[0].triples);
+// console.log("parsedQuery: ", parsedQuery.where[0].triples);
 console.log("starExtractor parsed: ");
-console.log(starExtractor(parsedQuery));
+var it = starExtractor(parsedQuery);
+
+it.on('data', function (result) { console.log(result); });
 
 http.get({
   hostname: '127.0.0.1',
