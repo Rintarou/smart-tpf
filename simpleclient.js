@@ -2,8 +2,8 @@ var sparqljs = require("sparqljs");
 var ldfclient = require("ldf-client");
 var asynciterator = require("asynciterator");
 var http = require("http");
-var ldf = require('ldf-client');
 var request = require("request");
+var ldf = require('ldf-client');
 
 const ReorderingGraphPatternIterator = require('ldf-client/lib/triple-pattern-fragments/ReorderingGraphPatternIterator.js')
 
@@ -35,8 +35,8 @@ class StarIterator extends asynciterator.BufferedIterator {
   }
 
   _read(count, done) {
-    var myself = this;
     request(this.current, function (error, response, body) {
+      var myself = this;
         if (!error && response.statusCode == 200) {
           var data = JSON.parse(body);
           for (var b of data.values) {
@@ -69,11 +69,13 @@ function evalStar(s1,p1,o1,s2,p2,o2) {
 
     var url = servUrl + "?s1=" + URIs1 + "&p1=" + URIp1 + "&o1=" + URIo1 + "&s2=" + URIs2 + "&p2=" + URIp2 + "&o2=" + URIo2 + "&page=";
 
+    console.log(url);
+
     var star = new StarIterator(url);
     return star;
 }
 
-var res = 0//evalStar("","http://www.w3.org/1999/02/22-rdf-syntax-ns#type","http://db.uwaterloo.ca/~galuc/wsdbm/Role1","","http://schema.org/email","");
+//evalStar("","http://www.w3.org/1999/02/22-rdf-syntax-ns#type","http://db.uwaterloo.ca/~galuc/wsdbm/Role1","","http://schema.org/email","");
 
 // res.on('readable', function(){
 //   // Ce que tu veux genre :
@@ -84,10 +86,6 @@ var res = 0//evalStar("","http://www.w3.org/1999/02/22-rdf-syntax-ns#type","http
 // for (var i = 0; i < 3; i++) {
 //   console.log(starit.read());
 // }
-
-const getKey = function(obj,val) {
-
-}
 
 function starExtractor(query) {
   var nbCountForSubject = {};
@@ -141,6 +139,19 @@ function starExtractor(query) {
     query.where[0].triples.splice(ind,1);
   }
 
+  console.log("star: ", star);
+
+  // //console.log("star[0]: ", star[0]);
+  // for(var i = 0; i<star.length; i++) {
+  //   for(property in star[i]) {
+  //     // console.log("property: ", property);
+  //     // console.log("star[i][property]: ", star[i][property]);
+  //     var regex = /^\?/;
+  //     if ((new RegExp(regex)).test(star[i][property])) {
+  //       star[i][property] = "";
+  //     }
+  //   }
+  // }
 
   var s1 = star[0].subject;
   var p1 = star[0].predicate;
@@ -153,31 +164,37 @@ function starExtractor(query) {
   var options = {
     fragmentsClient : server
   }
-  //console.log("query");
-  //console.log(query)
-  var queryLeft = 'SELECT * WHERE {  <http://db.uwaterloo.ca/~galuc/wsdbm/Retailer699> <http://purl.org/goodrelations/offers> ?v0 .  ?v1 <http://schema.org/printPage> ?v4 .  }'
-  let iterator = new ReorderingGraphPatternIterator(res, query, options)
+
+  //let iterator = new ReorderingGraphPatternIterator(res, query, options)
   // res.on('readable', function(){
   //   // Ce que tu veux genre :
   //   console.log(res.read());
   // })
 
-  return iterator;
+  return res;
 }
+
 //reoarderingraphpatterniterator(iteraotr, query, options(json server etc))
 
 //console.log("testq: ", parser.parse(test_query));
 // console.log("parsedQuery: ", parsedQuery.where[0].triples);
 console.log("starExtractor parsed: ");
-var res = starExtractor(parsedQuery);
+var it = starExtractor(parsedQuery);
 
-res.on('readable', function(){
-  v = res.read();
-  console.log(v);
-  while (v) {
-    v = res.read();
-    if (v) {
-      console.log(v);
-    }
-  }
+//it.on('data', function (result) { console.log(result); });
+
+it.on('readable', function(){
+  // Ce que tu veux genre :
+  console.log(it.read());
 })
+
+
+// http.get({
+//   hostname: '127.0.0.1',
+//   port: 5000,
+//   path: '/star?s1=&p1=http%3A%2F%2Fwww.w3.org%2F1999%2F02%2F22-rdf-syntax-ns%23type&o1=http%3A%2F%2Fdb.uwaterloo.ca%2F~galuc%2Fwsdbm%2FRole1&s2=&p2=http%3A%2F%2Fschema.org%2Femail&o2=&page=1',
+// }, function(res) {
+//   res.on('data', function(data) {
+//     //console.log(JSON.parse(data));
+//   });
+// });
