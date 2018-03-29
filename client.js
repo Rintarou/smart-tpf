@@ -6,19 +6,15 @@ var request = require("request");
 var ldf = require('ldf-client');
 
 const ReorderingGraphPatternIterator = require('ldf-client/lib/triple-pattern-fragments/ReorderingGraphPatternIterator.js')
+ldf.Logger.setLevel('WARNING')
 
-var test_query = 'PREFIX foaf: <http://xmlns.com/foaf/0.1/> ' + 'SELECT * { ?mickey foaf:name "Mickey Mouse"@en; foaf:knows ?other. }'
-var other_query = 'SELECT * WHERE {  <http://db.uwaterloo.ca/~galuc/wsdbm/Retailer699> <http://purl.org/goodrelations/offers> ?v0 .  ?v0 <http://purl.org/goodrelations/includes> ?v1 .  ?v0 <http://purl.org/goodrelations/validThrough> ?v3 .  ?v1 <http://schema.org/printPage> ?v4 .  }'
-
-var testUrl =  'http://127.0.0.1:5000/star?s1=&p1=http%3A%2F%2Fwww.w3.org%2F1999%2F02%2F22-rdf-syntax-ns%23type&o1=http%3A%2F%2Fdb.uwaterloo.ca%2F~galuc%2Fwsdbm%2FRole1&s2=&p2=http%3A%2F%2Fschema.org%2Femail&o2=&page='
-
-var servUrl = 'http://127.0.0.1:5000/star'
-
-var server = new ldf.FragmentsClient('http://34.212.44.110/watDiv_100');
+var zz_serv = 'http://127.0.0.1:5000/star'
+var ldf_serv = new ldf.FragmentsClient('http://127.0.0.1:4000/');
 
  var SparqlParser = sparqljs.Parser;
  var parser = new SparqlParser();
- var parsedQuery = parser.parse(other_query);
+
+
 
 // console.log(parsedQuery);
 // console.log('triples: ');
@@ -51,7 +47,7 @@ class StarIterator extends asynciterator.BufferedIterator {
           }
          }
          else {
-           console.error(error);
+           emit(error);
            myself.close();
          }
     })
@@ -67,7 +63,7 @@ function evalStar(s1,p1,o1,s2,p2,o2) {
     URIp2 = encodeURIComponent(p2);
     URIo2 = encodeURIComponent(o2);
 
-    var url = servUrl + "?s1=" + URIs1 + "&p1=" + URIp1 + "&o1=" + URIo1 + "&s2=" + URIs2 + "&p2=" + URIp2 + "&o2=" + URIo2 + "&page=";
+    var url = zz_serv + "?s1=" + URIs1 + "&p1=" + URIp1 + "&o1=" + URIo1 + "&s2=" + URIs2 + "&p2=" + URIp2 + "&o2=" + URIo2 + "&page=";
 
     console.log(url);
 
@@ -124,8 +120,6 @@ function starExtractor(query) {
 
   //console.log("mainSubject: ", mainSubject);
 
-  //TODO:rendre ça propre
-
   var star = [];
   var delIndex = [];
   for (i = 0; i< query.where[0].triples.length; i++) {
@@ -162,39 +156,32 @@ function starExtractor(query) {
 
   var res = evalStar(s1,p1,o1,s2,p2,o2);
   var options = {
-    fragmentsClient : server
+    fragmentsClient : ldf_serv
   }
+  //console.log("query");
+  //console.log(query)
 
-  //let iterator = new ReorderingGraphPatternIterator(res, query, options)
+  var queryLeft = query.where[0].triples;
+
+  let iterator = new ReorderingGraphPatternIterator(res, queryLeft, options)
   // res.on('readable', function(){
   //   // Ce que tu veux genre :
   //   console.log(res.read());
   // })
 
-  return res;
+  return iterator;
 }
 
 //reoarderingraphpatterniterator(iteraotr, query, options(json server etc))
 
 //console.log("testq: ", parser.parse(test_query));
 // console.log("parsedQuery: ", parsedQuery.where[0].triples);
-console.log("starExtractor parsed: ");
-var it = starExtractor(parsedQuery);
+var test_query = "SELECT * WHERE {  <http://db.uwaterloo.ca/~galuc/wsdbm/Retailer699> <http://purl.org/goodrelations/offers> ?v0 .  ?v0 <http://purl.org/goodrelations/includes> ?v1 .  ?v0 <http://purl.org/goodrelations/validThrough> ?v3 .  ?v1 <http://schema.org/printPage> ?v4 .  }";
+var test_query2 = "SELECT * WHERE {  ?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/Role1> .  ?v2 <http://schema.org/contactPoint> ?v0 .  ?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v3 .  }";
 
-//it.on('data', function (result) { console.log(result); });
+var parsedQuery = parser.parse(test_query2);
 
-it.on('readable', function(){
-  // Ce que tu veux genre :
-  console.log(it.read());
-})
+var res = starExtractor(parsedQuery);
 
 
-// http.get({
-//   hostname: '127.0.0.1',
-//   port: 5000,
-//   path: '/star?s1=&p1=http%3A%2F%2Fwww.w3.org%2F1999%2F02%2F22-rdf-syntax-ns%23type&o1=http%3A%2F%2Fdb.uwaterloo.ca%2F~galuc%2Fwsdbm%2FRole1&s2=&p2=http%3A%2F%2Fschema.org%2Femail&o2=&page=1',
-// }, function(res) {
-//   res.on('data', function(data) {
-//     //console.log(JSON.parse(data));
-//   });
-// });
+res.on('data', function (result) { console.log(result); });
