@@ -4,12 +4,14 @@ var asynciterator = require("asynciterator");
 var http = require("http");
 var request = require("request");
 var ldf = require('ldf-client');
+const EventEmitter = require('events');
+const myEE = new EventEmitter();
 
 const ReorderingGraphPatternIterator = require('ldf-client/lib/triple-pattern-fragments/ReorderingGraphPatternIterator.js')
 ldf.Logger.setLevel('WARNING')
 
 var zz_serv = 'http://127.0.0.1:5000/star'
-var ldf_serv = new ldf.FragmentsClient('http://127.0.0.1:4000/');
+var ldf_serv = new ldf.FragmentsClient('http://127.0.0.1:4000/watdiv');
 
  var SparqlParser = sparqljs.Parser;
  var parser = new SparqlParser();
@@ -31,8 +33,8 @@ class StarIterator extends asynciterator.BufferedIterator {
   }
 
   _read(count, done) {
+    var myself = this;
     request(this.current, function (error, response, body) {
-      var myself = this;
         if (!error && response.statusCode == 200) {
           var data = JSON.parse(body);
           for (var b of data.values) {
@@ -47,11 +49,11 @@ class StarIterator extends asynciterator.BufferedIterator {
           }
          }
          else {
-           emit(error);
+           myEE.emit(error);
            myself.close();
          }
+      done();
     })
-    done();
   }
 }
 
@@ -75,7 +77,7 @@ function evalStar(s1,p1,o1,s2,p2,o2) {
 
 // res.on('readable', function(){
 //   // Ce que tu veux genre :
-//   console.log(res.read());
+//   (res.read());
 // })
 
 // var starit = new StarIterator(testUrl);
@@ -163,12 +165,20 @@ function starExtractor(query) {
 
   var queryLeft = query.where[0].triples;
 
-  let iterator = new ReorderingGraphPatternIterator(res, queryLeft, options)
+  //let iterator = new ReorderingGraphPatternIterator(res, queryLeft, options)
+
   // res.on('readable', function(){
   //   // Ce que tu veux genre :
   //   console.log(res.read());
   // })
 
+  var bs = "SELECT * WHERE {  ?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre19> .  ?v0 <http://ogp.me/ns#title> ?v1  } LIMIT 100";
+  var testingRuben = parser.parse("SELECT * WHERE {  ?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre19> .  ?v0 <http://ogp.me/ns#title> ?v1 } LIMIT 100");
+  testingRuben = testingRuben.where[0].triples;
+  //console.log("testRuben: ",testingRuben);
+  let iterator = new ReorderingGraphPatternIterator(res, queryLeft, options);
+
+  //console.log("iterator: ", iterator);
   return iterator;
 }
 
@@ -184,4 +194,4 @@ var parsedQuery = parser.parse(test_query2);
 var res = starExtractor(parsedQuery);
 
 
-res.on('data', function (result) { console.log(result); });
+res.on('data', function (result) { console.log("results: ",result); });
