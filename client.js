@@ -82,6 +82,7 @@ function starExtractor(query) {
   }));
 
   if(mostCountForASubject == 1) {
+    console.log("false");
     return new ReorderingGraphPatternIterator(new asynciterator.SingletonIterator({}), query.where[0].triples, options);
   }
 
@@ -141,7 +142,7 @@ function execQuery(queryFile) {
 var args = process.argv.slice(2);
 if (args.length == 1) {
   var zz_serv = 'http://127.0.0.1:' + 3000 + '/star';
-  var ldf_serv = new ldf.FragmentsClient('http://localhost:' + 2000 + '/watdiv');
+  var ldf_serv = new ldf.FragmentsClient('http://localhost:' + 4000 + '/watdiv');
 
 }
 else {
