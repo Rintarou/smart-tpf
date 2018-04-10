@@ -16,13 +16,6 @@ var ldf_serv = new ldf.FragmentsClient('http://127.0.0.1:4000/watdiv');
  var SparqlParser = sparqljs.Parser;
  var parser = new SparqlParser();
 
-
-
-// console.log(parsedQuery);
-// console.log('triples: ');
-// console.log(parsedQuery.where[0].triples);
-
-
 class StarIterator extends asynciterator.BufferedIterator {
 
   constructor(prefixURL){
@@ -67,27 +60,18 @@ function evalStar(s1,p1,o1,s2,p2,o2) {
 
     var url = zz_serv + "?s1=" + URIs1 + "&p1=" + URIp1 + "&o1=" + URIo1 + "&s2=" + URIs2 + "&p2=" + URIp2 + "&o2=" + URIo2 + "&page=";
 
-    console.log(url);
+    //console.log(url);
 
     var star = new StarIterator(url);
     return star;
 }
 
-//evalStar("","http://www.w3.org/1999/02/22-rdf-syntax-ns#type","http://db.uwaterloo.ca/~galuc/wsdbm/Role1","","http://schema.org/email","");
-
-// res.on('readable', function(){
-//   // Ce que tu veux genre :
-//   (res.read());
-// })
-
-// var starit = new StarIterator(testUrl);
-// for (var i = 0; i < 3; i++) {
-//   console.log(starit.read());
-// }
-
 function starExtractor(query) {
+  var options = {
+    fragmentsClient : ldf_serv
+  }
+
   var nbCountForSubject = {};
-  // console.log("query.where[0].triples: ", query.where[0].triples);
   for (i = 0; i< query.where[0].triples.length; i++) {
     if(!nbCountForSubject[query.where[0].triples[i].subject]) {
       nbCountForSubject[query.where[0].triples[i].subject] = 0;
@@ -96,21 +80,17 @@ function starExtractor(query) {
   }
 
   var subjects = Object.keys(nbCountForSubject);
-  // console.log("subjects: ", subjects);
-  // console.log("nbCountForSubject: ", nbCountForSubject);
 
   var mostCountForASubject = Math.max.apply(Math, subjects.map(function(k) {
-    //console.log(nbCountForSubject[k]);
     return nbCountForSubject[k];
   }));
 
-  // console.log("subjects.map(function(k) {return nbCountForSubject[k];}) : ",subjects.map(function(k) {return nbCountForSubject[k];}))
-  // console.log(Math.max(subjects.map(function(k) {return nbCountForSubject[k];})));
-  // var a = [1,2,1];
-  // console.log(Math.max(a));
-  // console.log("mostCountForASubject: ", mostCountForASubject);
-
-  // console.log("Object.keys(nbCountForSubject): ",Object.keys(nbCountForSubject));
+  if(mostCountForASubject == 1) {
+    console.log("false");
+    return new ReorderingGraphPatternIterator(new asynciterator.SingletonIterator({}), query.where[0].triples, options);
+  } else {
+    console.log("true");
+  }
 
   var mainSubject = (function(){
     for (i = 0; i< subjects.length; i++) {
@@ -120,34 +100,17 @@ function starExtractor(query) {
     }
   })();
 
-  //console.log("mainSubject: ", mainSubject);
-
   var star = [];
   var delIndex = [];
   for (i = 0; i< query.where[0].triples.length; i++) {
-    // console.log("query.where[0].triples[i].subject: ",query.where[0].triples[i].subject);
     if(query.where[0].triples[i].subject == mainSubject) {
       star.push(query.where[0].triples[i]);
       delIndex.push(i);
     }
   }
-  for (var ind in delIndex) {
+  for (var ind in delIndex.reverse()) {
     query.where[0].triples.splice(ind,1);
   }
-
-  console.log("star: ", star);
-
-  // //console.log("star[0]: ", star[0]);
-  // for(var i = 0; i<star.length; i++) {
-  //   for(property in star[i]) {
-  //     // console.log("property: ", property);
-  //     // console.log("star[i][property]: ", star[i][property]);
-  //     var regex = /^\?/;
-  //     if ((new RegExp(regex)).test(star[i][property])) {
-  //       star[i][property] = "";
-  //     }
-  //   }
-  // }
 
   var s1 = star[0].subject;
   var p1 = star[0].predicate;
@@ -157,35 +120,17 @@ function starExtractor(query) {
   var o2 = star[1].object;
 
   var res = evalStar(s1,p1,o1,s2,p2,o2);
-  var options = {
-    fragmentsClient : ldf_serv
-  }
-  //console.log("query");
-  //console.log(query)
 
   var queryLeft = query.where[0].triples;
-
-  //let iterator = new ReorderingGraphPatternIterator(res, queryLeft, options)
-
-  // res.on('readable', function(){
-  //   // Ce que tu veux genre :
-  //   console.log(res.read());
-  // })
 
   var bs = "SELECT * WHERE {  ?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre19> .  ?v0 <http://ogp.me/ns#title> ?v1  } LIMIT 100";
   var testingRuben = parser.parse("SELECT * WHERE {  ?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre19> .  ?v0 <http://ogp.me/ns#title> ?v1 } LIMIT 100");
   testingRuben = testingRuben.where[0].triples;
-  //console.log("testRuben: ",testingRuben);
   let iterator = new ReorderingGraphPatternIterator(res, queryLeft, options);
 
-  //console.log("iterator: ", iterator);
   return iterator;
 }
 
-//reoarderingraphpatterniterator(iteraotr, query, options(json server etc))
-
-//console.log("testq: ", parser.parse(test_query));
-// console.log("parsedQuery: ", parsedQuery.where[0].triples);
 var test_query = "SELECT * WHERE {  <http://db.uwaterloo.ca/~galuc/wsdbm/Retailer699> <http://purl.org/goodrelations/offers> ?v0 .  ?v0 <http://purl.org/goodrelations/includes> ?v1 .  ?v0 <http://purl.org/goodrelations/validThrough> ?v3 .  ?v1 <http://schema.org/printPage> ?v4 .  }";
 var test_query2 = "SELECT * WHERE {  ?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/Role1> .  ?v2 <http://schema.org/contactPoint> ?v0 .  ?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v3 .  }";
 
@@ -194,4 +139,4 @@ var parsedQuery = parser.parse(test_query2);
 var res = starExtractor(parsedQuery);
 
 
-res.on('data', function (result) { console.log("results: ",result); });
+//res.on('data', function (result) { console.log("results: ",result); });
