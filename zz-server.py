@@ -1,4 +1,5 @@
 import itertools
+import re
 from hdt import *
 from flask import request, Flask, url_for, jsonify
 from flask_api import FlaskAPI, status, exceptions
@@ -21,11 +22,22 @@ def star():
     o2 = request.args.get('o2')
     pNb = int(request.args.get('page'))
 
-    tp1 = (s1,p1,o1)
-    tp2 = (s2,p2,o2)
+    tp1 = [s1,p1,o1]
+    tp2 = [s2,p2,o2]
 
-    page = paginatedZZ(tp1,tp2,(pNb-1)*P_SIZE,P_SIZE)
-    nextPage = [x for x in paginatedZZ(tp1,tp2,(pNb)*P_SIZE,P_SIZE)]
+    tp1Vars = [None,None,None]
+    tp2Vars = [None,None,None]
+
+    for i in range(3):
+        if bool(re.search('^\?', tp1[i])):
+            tp1Vars[i] = tp1[i]
+            tp1[i] = ""
+        if bool(re.search('^\?', tp2[i])):
+            tp2Vars[i] = tp2[i]
+            tp2[i] = ""
+    page = paginatedZZ(tp1,tp2,tp1Vars,tp2Vars,(pNb-1)*P_SIZE,P_SIZE)
+    nextPage = [x for x in paginatedZZ(tp1,tp2,tp1Vars,tp2Vars,(pNb)*P_SIZE,1)]
+
     last = not nextPage
     resp = {}
     if last :
@@ -35,7 +47,7 @@ def star():
     resp['values'] = [x for x in page]
     return resp
 
-def zigzag(tp1,tp2):
+def zigzag(tp1,tp2,tp1Vars,tp2Vars):
 
     (triplesTP1, cardinalityTP1) = DOC.search_triples_ids("", tp1[1], tp1[2])
     # print("TP1 = { "+ triplesTP1.subject +" "+ triplesTP1.predicate +" "+ triplesTP1.object +" }")
@@ -129,20 +141,16 @@ def zigzag(tp1,tp2):
     for val in resVals:
 
         select = {}
-        select.update({"?s":val[0][0]})
-        if triplesTP1.predicate == "?p" :
-            select.update({"?p1":val[0][1]})
-        if triplesTP1.object == "?o" :
-            select.update({"?o1":val[0][2]})
-        if triplesTP2.predicate == "?p" :
-            select.update({"?p2":val[1][1]})
-        if triplesTP2.object == "?o" :
-            select.update({"?o2":val[1][2]})
+        for i in range(3):
+            if tp1Vars[i] :
+                select.update({tp1Vars[i] : val[0][i]})
+            if tp2Vars[i] :
+                select.update({tp2Vars[i] : val[1][i]})
         yield select
 
 
-def paginatedZZ(tp1,tp2,offset,pgSize) :
-    result = zigzag(tp1,tp2)
+def paginatedZZ(tp1,tp2,tp1Vars,tp2Vars,offset,pgSize) :
+    result = zigzag(tp1,tp2,tp1Vars,tp2Vars)
     page = itertools.islice(result,offset,(offset+pgSize))
     return page
 

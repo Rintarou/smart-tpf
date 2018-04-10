@@ -2,19 +2,17 @@ var sparqljs = require("sparqljs");
 var ldfclient = require("ldf-client");
 var asynciterator = require("asynciterator");
 var http = require("http");
-var request = require("request");
+var readline = require('readline');
 var ldf = require('ldf-client');
+var request = require("request");
+var fs = require('fs');
+
+const ReorderingGraphPatternIterator = require('ldf-client/lib/triple-pattern-fragments/ReorderingGraphPatternIterator.js');
+const TriplePatternIterator = require('ldf-client/lib/triple-pattern-fragments/TriplePatternIterator.js');
 const EventEmitter = require('events');
 const myEE = new EventEmitter();
-
-const ReorderingGraphPatternIterator = require('ldf-client/lib/triple-pattern-fragments/ReorderingGraphPatternIterator.js')
 ldf.Logger.setLevel('WARNING')
 
-var zz_serv = 'http://127.0.0.1:5000/star'
-var ldf_serv = new ldf.FragmentsClient('http://127.0.0.1:4000/watdiv');
-
- var SparqlParser = sparqljs.Parser;
- var parser = new SparqlParser();
 
 class StarIterator extends asynciterator.BufferedIterator {
 
@@ -60,8 +58,6 @@ function evalStar(s1,p1,o1,s2,p2,o2) {
 
     var url = zz_serv + "?s1=" + URIs1 + "&p1=" + URIp1 + "&o1=" + URIo1 + "&s2=" + URIs2 + "&p2=" + URIp2 + "&o2=" + URIo2 + "&page=";
 
-    //console.log(url);
-
     var star = new StarIterator(url);
     return star;
 }
@@ -86,10 +82,7 @@ function starExtractor(query) {
   }));
 
   if(mostCountForASubject == 1) {
-    console.log("false");
     return new ReorderingGraphPatternIterator(new asynciterator.SingletonIterator({}), query.where[0].triples, options);
-  } else {
-    console.log("true");
   }
 
   var mainSubject = (function(){
@@ -123,20 +116,38 @@ function starExtractor(query) {
 
   var queryLeft = query.where[0].triples;
 
-  var bs = "SELECT * WHERE {  ?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre19> .  ?v0 <http://ogp.me/ns#title> ?v1  } LIMIT 100";
-  var testingRuben = parser.parse("SELECT * WHERE {  ?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre> <http://db.uwaterloo.ca/~galuc/wsdbm/SubGenre19> .  ?v0 <http://ogp.me/ns#title> ?v1 } LIMIT 100");
-  testingRuben = testingRuben.where[0].triples;
   let iterator = new ReorderingGraphPatternIterator(res, queryLeft, options);
 
   return iterator;
 }
 
-var test_query = "SELECT * WHERE {  <http://db.uwaterloo.ca/~galuc/wsdbm/Retailer699> <http://purl.org/goodrelations/offers> ?v0 .  ?v0 <http://purl.org/goodrelations/includes> ?v1 .  ?v0 <http://purl.org/goodrelations/validThrough> ?v3 .  ?v1 <http://schema.org/printPage> ?v4 .  }";
-var test_query2 = "SELECT * WHERE {  ?v0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://db.uwaterloo.ca/~galuc/wsdbm/Role1> .  ?v2 <http://schema.org/contactPoint> ?v0 .  ?v0 <http://db.uwaterloo.ca/~galuc/wsdbm/gender> ?v3 .  }";
+function execQuery(queryFile) {
 
-var parsedQuery = parser.parse(test_query2);
-
-var res = starExtractor(parsedQuery);
+  var SparqlParser = sparqljs.Parser;
+  var parser = new SparqlParser();
 
 
-//res.on('data', function (result) { console.log("results: ",result); });
+  var query = fs.readFileSync(queryFile, {encoding : 'utf8'});
+  var parsedQuery = parser.parse(query);
+  var result = starExtractor(parsedQuery);
+  console.time("Query");
+
+  result.on('data', function(r){
+    console.log(r);
+  })
+  result.on('end', function(){ console.timeEnd("Query");})
+}
+
+var args = process.argv.slice(2);
+if (args.length == 1) {
+  var zz_serv = 'http://127.0.0.1:' + 3000 + '/star';
+  var ldf_serv = new ldf.FragmentsClient('http://localhost:' + 2000 + '/watdiv');
+
+}
+else {
+  var zz_serv = 'http://127.0.0.1:' + args[1] + '/star';
+  var ldf_serv = new ldf.FragmentsClient('http://localhost:' + args[2] + '/watdiv');
+
+}
+
+execQuery(args[0]);
