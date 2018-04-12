@@ -124,31 +124,74 @@ function starExtractor(query) {
 
 function execQuery(queryFile) {
 
+  // Parser declaration
   var SparqlParser = sparqljs.Parser;
   var parser = new SparqlParser();
 
-
+  // Preparation of query for ZZ
   var query = fs.readFileSync(queryFile, {encoding : 'utf8'});
   var parsedQuery = parser.parse(query);
-  var result = starExtractor(parsedQuery);
-  console.time("Query");
+  var triples = parsedQuery.where[0].triples;
 
-  result.on('data', function(r){
-    console.log(r);
+  // Preparation of query for LDF
+  var queryFull = fs.readFileSync(queryFile, {encoding : 'utf8'});
+  var parsedQueryFull = parser.parse(queryFull);
+  var triplesFull = parsedQueryFull.where[0].triples;
+
+  // Creating both iterators
+  let ldfRes = new ReorderingGraphPatternIterator(new asynciterator.SingletonIterator({}), triplesFull, {fragmentsClient : ldf_serv});
+  var zzRes = starExtractor(parsedQuery);
+
+  // Initialisation of result set for each
+  var verifSetZZ = new Set();
+  var verifSetLDF = new Set();
+
+  // Reading ZZ results
+  console.time("ZZ Query");
+  zzRes.on('data', function(r){
+    verifSetZZ.add(r);
+    //console.log(r);
   })
-  result.on('end', function(){ console.timeEnd("Query");})
+
+  // When finished reading ZZ results, stop timer and go to LDF
+  zzRes.on('end', function(){
+    console.timeEnd("ZZ Query")
+
+    // Reading LDF results
+    console.time("LDF Query");
+    ldfRes.on('data', function(r){
+      verifSetLDF.add(r);
+      //console.log(r);
+    });
+
+    // When finished reading ZZ results, stop timer and test soundness
+    ldfRes.on('end', function(){
+      console.timeEnd("LDF Query");
+      soundnessCheck(verifSetZZ,verifSetLDF);
+    });
+
+  ;})
+
+
+}
+
+function soundnessCheck(setZZ,setLDF) {
+  var sound = true;
+  if (setZZ.size != setLDF.size && JSON.stringify(Array.from(setZZ)) != JSON.stringify(Array.from(setLDF))) {
+    sound = false;
+  }
+  console.log("Sound : " + sound);
 }
 
 var args = process.argv.slice(2);
 if (args.length == 1) {
-  var zz_serv = 'http://127.0.0.1:' + 3000 + '/star';
-  var ldf_serv = new ldf.FragmentsClient('http://localhost:' + 4000 + '/watdiv');
+  var zz_serv = 'http://127.0.0.1:3000/star';
+  var ldf_serv = new ldf.FragmentsClient('http://localhost:2000/watdiv');
 
 }
 else {
   var zz_serv = 'http://127.0.0.1:' + args[1] + '/star';
   var ldf_serv = new ldf.FragmentsClient('http://localhost:' + args[2] + '/watdiv');
-
 }
 
 execQuery(args[0]);
