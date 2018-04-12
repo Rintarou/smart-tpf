@@ -131,12 +131,6 @@ function execQuery(queryFile) {
   // Preparation of query for ZZ
   var query = fs.readFileSync(queryFile, {encoding : 'utf8'});
   var parsedQuery = parser.parse(query);
-<<<<<<< HEAD
-  var result = starExtractor(parsedQuery);
-  console.time("Query");
-
-  result.on('data', function(r){
-=======
   var triples = parsedQuery.where[0].triples;
 
   // Preparation of query for LDF
@@ -156,7 +150,6 @@ function execQuery(queryFile) {
   console.time("ZZ Query");
   zzRes.on('data', function(r){
     verifSetZZ.add(r);
->>>>>>> ceb48e493243edffd5f42e08ccc30f820552c47e
     //console.log(r);
   })
 
