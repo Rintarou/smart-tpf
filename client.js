@@ -142,7 +142,7 @@ function execQuery(queryFile) {
   var verifSetLDF = new Set();
 
   // Reading ZZ results
-  console.time("LDF Query");
+  var startLDF = Date.now();
   var ldfRes = new ReorderingGraphPatternIterator(new asynciterator.SingletonIterator({}), triplesFull, {fragmentsClient : ldf_serv});
   ldfRes.on('data', function(r){
     verifSetLDF.add(r);
@@ -151,10 +151,13 @@ function execQuery(queryFile) {
 
   // When finished reading ZZ results, stop timer and go to LDF
   ldfRes.on('end', function(){
-    console.timeEnd("LDF Query")
+    var endLDF = Date.now();
+    var timerLDF = (endLDF-startLDF);
+    // console.log("LDF : " + timerLDF + "ms");
 
     // Reading LDF results
     console.time("ZZ Query");
+    var startZZ = Date.now();
     var zzRes = starExtractor(parsedQuery);
     zzRes.on('data', function(r){
       verifSetZZ.add(r);
@@ -163,8 +166,11 @@ function execQuery(queryFile) {
 
     // When finished reading ZZ results, stop timer and test soundness
     zzRes.on('end', function(){
-      console.timeEnd("ZZ Query");
-      soundnessCheck(verifSetZZ,verifSetLDF);
+      var endZZ = Date.now();
+      var timerZZ = (endZZ-startZZ);
+      var soundness = soundnessCheck(verifSetZZ,verifSetLDF);
+      var queryNumber = queryFile.slice(14,-3);
+      console.log(queryNumber + "," + timerLDF + "," + timerZZ + "," + soundness)
     });
 
   ;})
@@ -173,13 +179,13 @@ function execQuery(queryFile) {
 }
 
 function soundnessCheck(setZZ,setLDF) {
-  var sound = true;
-  if (setZZ.size != setLDF.size && JSON.stringify(Array.from(setZZ)) != JSON.stringify(Array.from(setLDF))) {
-    sound = false;
-  }
+  var sound = !(setZZ.size != setLDF.size && JSON.stringify(Array.from(setZZ)) != JSON.stringify(Array.from(setLDF)));
+  /*
   console.log("Sound : " + sound);
   console.log("LDF size : " + setLDF.size);
   console.log("ZZ size : " + setZZ.size);
+  */
+  return sound;
 }
 
 var args = process.argv.slice(2);
