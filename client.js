@@ -122,6 +122,8 @@ function starExtractor(query) {
 }
 
 function execQuery(queryFile) {
+  var ldfTimedOut = false;
+  var zzTimedOut = false;
 
   // Parser declaration
   var SparqlParser = sparqljs.Parser;
@@ -147,7 +149,14 @@ function execQuery(queryFile) {
   ldfRes.on('data', function(r){
     verifSetLDF.add(r);
     //console.log(r);
-  })
+  });
+  ldfRes.on('socket', function (socket) {
+    socket.setTimeout(3000);
+    socket.on('timeout', function() {
+        ldfTimedOut = true;
+        ldfRes.abort();
+    });
+  });
 
   // When finished reading ZZ results, stop timer and go to LDF
   ldfRes.on('end', function(){
@@ -163,6 +172,13 @@ function execQuery(queryFile) {
       verifSetZZ.add(r);
       //console.log(r);
     });
+    zzRes.on('socket', function (socket) {
+      socket.setTimeout(3000);
+      socket.on('timeout', function() {
+          zzTimedOut = true;
+          zzRes.abort();
+      });
+    });
 
     // When finished reading ZZ results, stop timer and test soundness
     zzRes.on('end', function(){
@@ -170,7 +186,7 @@ function execQuery(queryFile) {
       var timerZZ = (endZZ-startZZ);
       var soundness = soundnessCheck(verifSetZZ,verifSetLDF);
       var queryNumber = queryFile.slice(14,-3);
-      console.log(queryNumber + "," + timerLDF + "," + timerZZ + "," + soundness)
+      console.log(queryNumber + "," + timerLDF + "," + timerZZ + "," + soundness + "," + ldfTimedOut + ',' + zzTimedOut);
     });
 
   ;})

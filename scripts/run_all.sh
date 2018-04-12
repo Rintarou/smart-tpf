@@ -1,7 +1,7 @@
 #!/bin/bash
 
 FILE=$1+".csv"
-echo "QueryNumber, LDFtime(ms), ZZtime(ms), soundness" > $FILE
+echo "QueryNumber, LDFtime(ms), ZZtime(ms), soundness, ldftimeout, zzTimeout" > $FILE
 
 # while read -r; do
 #   line="$REPLY"
