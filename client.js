@@ -57,7 +57,6 @@ function evalStar(s1,p1,o1,s2,p2,o2) {
     URIo2 = encodeURIComponent(o2);
 
     var url = zz_serv + "?s1=" + URIs1 + "&p1=" + URIp1 + "&o1=" + URIo1 + "&s2=" + URIs2 + "&p2=" + URIp2 + "&o2=" + URIo2 + "&page=";
-
     var star = new StarIterator(url);
     return star;
 }
@@ -102,9 +101,9 @@ function starExtractor(query) {
       delIndex.push(i);
     }
   }
-  for (var ind in delIndex.reverse()) {
-    query.where[0].triples.splice(ind,1);
-  }
+
+  query.where[0].triples.splice(delIndex[1],1);
+  query.where[0].triples.splice(delIndex[0],1);
 
   var s1 = star[0].subject;
   var p1 = star[0].predicate;
@@ -117,7 +116,7 @@ function starExtractor(query) {
 
   var queryLeft = query.where[0].triples;
 
-  let iterator = new ReorderingGraphPatternIterator(res, queryLeft, options);
+  var iterator = new ReorderingGraphPatternIterator(res, queryLeft, options);
 
   return iterator;
 }
@@ -138,16 +137,13 @@ function execQuery(queryFile) {
   var parsedQueryFull = parser.parse(queryFull);
   var triplesFull = parsedQueryFull.where[0].triples;
 
-  // Creating both iterators
-  let ldfRes = new ReorderingGraphPatternIterator(new asynciterator.SingletonIterator({}), triplesFull, {fragmentsClient : ldf_serv});
-  var zzRes = starExtractor(parsedQuery);
-
   // Initialisation of result set for each
   var verifSetZZ = new Set();
   var verifSetLDF = new Set();
 
   // Reading ZZ results
   console.time("LDF Query");
+  var ldfRes = new ReorderingGraphPatternIterator(new asynciterator.SingletonIterator({}), triplesFull, {fragmentsClient : ldf_serv});
   ldfRes.on('data', function(r){
     verifSetLDF.add(r);
     //console.log(r);
@@ -159,6 +155,7 @@ function execQuery(queryFile) {
 
     // Reading LDF results
     console.time("ZZ Query");
+    var zzRes = starExtractor(parsedQuery);
     zzRes.on('data', function(r){
       verifSetZZ.add(r);
       //console.log(r);
@@ -181,6 +178,8 @@ function soundnessCheck(setZZ,setLDF) {
     sound = false;
   }
   console.log("Sound : " + sound);
+  console.log("LDF size : " + setLDF.size);
+  console.log("ZZ size : " + setZZ.size);
 }
 
 var args = process.argv.slice(2);
