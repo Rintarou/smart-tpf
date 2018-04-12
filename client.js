@@ -13,6 +13,7 @@ const EventEmitter = require('events');
 const myEE = new EventEmitter();
 ldf.Logger.setLevel('WARNING')
 
+var zzTimeout = 0;
 
 class StarIterator extends asynciterator.BufferedIterator {
 
@@ -25,7 +26,7 @@ class StarIterator extends asynciterator.BufferedIterator {
 
   _read(count, done) {
     var myself = this;
-    request(this.current, function (error, response, body) {
+    var req = request(this.current, function (error, response, body) {
         if (!error && response.statusCode == 200) {
           var data = JSON.parse(body);
           for (var b of data.values) {
@@ -45,6 +46,13 @@ class StarIterator extends asynciterator.BufferedIterator {
          }
       done();
     })
+    req.on('socket', function (socket) {
+      socket.setTimeout(3000);
+      socket.on('timeout', function() {
+          zzTimeout ++;
+          console.log(ldfTimeout);
+      });
+    });
   }
 }
 
@@ -122,9 +130,7 @@ function starExtractor(query) {
 }
 
 function execQuery(queryFile) {
-  var ldfTimedOut = false;
-  var zzTimedOut = false;
-
+  
   // Parser declaration
   var SparqlParser = sparqljs.Parser;
   var parser = new SparqlParser();
@@ -150,13 +156,6 @@ function execQuery(queryFile) {
     verifSetLDF.add(r);
     //console.log(r);
   });
-  ldfRes.on('socket', function (socket) {
-    socket.setTimeout(3000);
-    socket.on('timeout', function() {
-        ldfTimedOut = true;
-        ldfRes.abort();
-    });
-  });
 
   // When finished reading ZZ results, stop timer and go to LDF
   ldfRes.on('end', function(){
@@ -172,13 +171,6 @@ function execQuery(queryFile) {
       verifSetZZ.add(r);
       //console.log(r);
     });
-    zzRes.on('socket', function (socket) {
-      socket.setTimeout(3000);
-      socket.on('timeout', function() {
-          zzTimedOut = true;
-          zzRes.abort();
-      });
-    });
 
     // When finished reading ZZ results, stop timer and test soundness
     zzRes.on('end', function(){
@@ -186,7 +178,7 @@ function execQuery(queryFile) {
       var timerZZ = (endZZ-startZZ);
       var soundness = soundnessCheck(verifSetZZ,verifSetLDF);
       var queryNumber = queryFile.slice(14,-3);
-      console.log(queryNumber + "," + timerLDF + "," + timerZZ + "," + soundness + "," + ldfTimedOut + ',' + zzTimedOut);
+      console.log(queryNumber + "," + timerLDF + "," + timerZZ + "," + soundness + "," + zzTimeout);
     });
 
   ;})
