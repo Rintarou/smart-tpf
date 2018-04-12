@@ -147,26 +147,26 @@ function execQuery(queryFile) {
   var verifSetLDF = new Set();
 
   // Reading ZZ results
-  console.time("ZZ Query");
-  zzRes.on('data', function(r){
-    verifSetZZ.add(r);
+  console.time("LDF Query");
+  ldfRes.on('data', function(r){
+    verifSetLDF.add(r);
     //console.log(r);
   })
 
   // When finished reading ZZ results, stop timer and go to LDF
-  zzRes.on('end', function(){
-    console.timeEnd("ZZ Query")
+  ldfRes.on('end', function(){
+    console.timeEnd("LDF Query")
 
     // Reading LDF results
-    console.time("LDF Query");
-    ldfRes.on('data', function(r){
-      verifSetLDF.add(r);
+    console.time("ZZ Query");
+    zzRes.on('data', function(r){
+      verifSetZZ.add(r);
       //console.log(r);
     });
 
     // When finished reading ZZ results, stop timer and test soundness
-    ldfRes.on('end', function(){
-      console.timeEnd("LDF Query");
+    zzRes.on('end', function(){
+      console.timeEnd("ZZ Query");
       soundnessCheck(verifSetZZ,verifSetLDF);
     });
 
