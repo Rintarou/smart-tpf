@@ -134,14 +134,14 @@ function execQuery(queryFile) {
   console.time("Query");
 
   result.on('data', function(r){
-    console.log(r);
+    //console.log(r);
   })
   result.on('end', function(){ console.timeEnd("Query");})
 }
 
 var args = process.argv.slice(2);
 if (args.length == 1) {
-  var zz_serv = 'http://127.0.0.1:' + 3000 + '/star';
+  var zz_serv = 'http://127.0.0.1:' + 5000 + '/star';
   var ldf_serv = new ldf.FragmentsClient('http://localhost:' + 4000 + '/watdiv');
 
 }
