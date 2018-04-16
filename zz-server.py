@@ -10,15 +10,29 @@ PATH = "datasets/benchmark.hdt"
 DOC = HDTDocument(PATH)
 P_SIZE = 100
 
-# Test URL : http://127.0.0.1:5000/star?s1=&p1=http%3A%2F%2Fwww.w3.org%2F1999%2F02%2F22-rdf-syntax-ns%23type&o1=http%3A%2F%2Fdb.uwaterloo.ca%2F~galuc%2Fwsdbm%2FRole1&s2=&p2=http%3A%2F%2Fschema.org%2Femail&o2=&page=1
+@app.route("/cardi", methods=['GET'])
+def cardi():
+    s = request.args.get('s')
+    p = request.args.get('p')
+    o = request.args.get('o')
+
+    tp = [s,p,o]
+
+    for i in range(3):
+        if bool(re.search('^\?', tp[i])):
+            tp[i] = ""
+
+    (triples, cardi) = DOC.search_triples_ids(tp[0], tp[1], tp[2])
+    
+    return {"value" : cardi}
 
 @app.route("/star", methods=['GET'])
 def star():
     s1 = request.args.get('s1')
-    p1 = request.args.get('p1') # "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
-    o1 = request.args.get('o1') # "http://db.uwaterloo.ca/~galuc/wsdbm/Role1"
+    p1 = request.args.get('p1')
+    o1 = request.args.get('o1')
     s2 = request.args.get('s2')
-    p2 = request.args.get('p2') # "http://schema.org/email"
+    p2 = request.args.get('p2')
     o2 = request.args.get('o2')
     pNb = int(request.args.get('page'))
 
