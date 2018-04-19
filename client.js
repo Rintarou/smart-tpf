@@ -16,8 +16,9 @@ const myEE = new EventEmitter();
 ldf.Logger.setLevel('WARNING')
 
 var zzTimeout = 1000;
-
 var cardinalityLimit = 20;
+var srvResTime = [];
+var nbZZCalls = 0;
 
 function execQuery(queryFile) {
 
@@ -84,7 +85,13 @@ function execQuery(queryFile) {
             var timerZZ = (endZZ-startZZ);
             var soundness = soundnessCheck(verifSetZZ,verifSetLDF);
             var queryNumber = queryFile.slice(14,-3);
-            console.log(queryNumber + "," + timerLDF + "," + timerZZ + "," + soundness + "," + zzTimeout);
+
+            var stream = fs.createWriteStream("throughput.csv", {flags:'a'});
+            srvResTime.forEach( function (item,index) {
+                stream.write(item + "\n");
+            });
+            stream.end();
+            console.log(queryNumber + "," + timerLDF + "," + timerZZ + "," + soundness + "," + nbZZCalls);
           });
         } else {
           //console.log(waitingAnswer);
@@ -216,7 +223,7 @@ function starExtractor(triples) {
   var triple1 = triples[it];
   var triple2 = triples[jt];
 
-  console.log("triple1: ", triple1, "\ntriple2: ",triple2);
+  // console.log("triple1: ", triple1, "\ntriple2: ",triple2);
 
   var queryLeft = triples.filter(triple => triple !== triple1 && triple !== triple2)
 
@@ -338,8 +345,12 @@ class StarIterator extends asynciterator.BufferedIterator {
 
   _read(count, done) {
     var myself = this;
+    var srvTimerSt = Date.now();
     var req = request(this.current, function (error, response, body) {
         if (!error && response.statusCode == 200) {
+          var srvTimerEnd = Date.now();
+          srvResTime.push(srvTimerEnd - srvTimerSt);
+          nbZZCalls++;
           var data = JSON.parse(body);
           for (var b of data.values) {
             myself._push(b);
@@ -358,12 +369,5 @@ class StarIterator extends asynciterator.BufferedIterator {
          }
       done();
     })
-    req.on('socket', function (socket) {
-      socket.setTimeout(3000);
-      socket.on('timeout', function() {
-          zzTimeout ++;
-          //console.log(ldfTimeout);
-      });
-    });
   }
 }
