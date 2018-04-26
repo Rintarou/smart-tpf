@@ -146,51 +146,6 @@ function starExtractor(triples) {
     return new ReorderingGraphPatternIterator(res, {}, options);
   }
 
-  // var remainingTriples = [];
-  // var starElligibleTriples = [];
-
-  // var cardGetUrl = zz_serv + "/cardi" + "?s=" + s0 + "&p=" + p0 + "&o=" + o0;
-  // console.log(cardGetUrl);
-  // request(cardGetUrl, function(error, response, body){
-  //   if (!error && response.statusCode == 200) {
-  //     var data = JSON.parse(body);
-  //     console.log("card: ", data.value);
-  //   } else {
-  //     console.log("err");
-  //   }
-  // });
-
-  // for (i = 0; i < triples.length; i++) {
-  //   //console.log(triples.length); //needs to be constant
-  //   if(mostCountForASubject[triples[i].subject] > 1) {
-  //
-  //     if(!triples[i].predicate.match(/^\?/) && !triples[i].object.match(/^\?/)) {
-  //       let s0 = encodeURIComponent(triples[i].subject);
-  //       let p0 = encodeURIComponent(triples[i].predicate);
-  //       let o0 = encodeURIComponent(triples[i].object);
-  //       var cardGetUrl = zz_serv + "/cardi" + "?s=" + s0 + "&p=" + p0 + "&o=" + o0;
-  //
-  //       let x = starElligibleTriples.length;
-  //       starElligibleTriples.push( triples[i] );
-  //       waitingAnswer[x]=true;
-  //       request(cardGetUrl, function(error, response, body){
-  //         var data = JSON.parse(body);
-  //         starElligibleTriples[x].cardinality = data.value;
-  //         waitingAnswer[x]=false;
-  //         console.log("card: ", data.value);
-  //       });
-  //
-  //     } else {
-  //       remainingTriples.push(triples[i]);
-  //       mostCountForASubject[triples[i].subject]--;
-  //     }
-  //
-  //   } else {
-  //     remainingTriples.push(triples[i]);
-  //
-  //   }
-  // }
-
   for (i = 0; i < triples.length; i++) {
     triples[i].cardinality = JSON.parse(triples[i].reqCard.response.body).value;
     triples[i].reqCard = {};
@@ -227,7 +182,7 @@ function starExtractor(triples) {
 
   var queryLeft = triples.filter(triple => triple !== triple1 && triple !== triple2)
 
-  if(it != 0 || triple1.subject == triple2.subject || queryLeft[0].cardinality*queryLeft[0].cardinality < triple1.cardinality*triple2.cardinality) {
+  if(it != 0 || triple1.subject != triple2.subject /*|| queryLeft[0].cardinality*queryLeft[0].cardinality < triple1.cardinality*triple2.cardinality*/) {
     //console.log("@here: no star");
     return new ReorderingGraphPatternIterator(new asynciterator.SingletonIterator({}), triples, options);
   }
