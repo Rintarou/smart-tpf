@@ -6,6 +6,7 @@ var readline = require('readline');
 var ldf = require('ldf-client');
 var request = require("request");
 var fs = require('fs');
+var inArray = require('in-array');
 
 //var StarIterator = require("./stariterator.js")
 
@@ -19,6 +20,7 @@ var zzTimeout = 1000;
 var cardinalityLimit = 20;
 var srvResTime = [];
 var nbZZCalls = 0;
+var naughtyList = ["10227"]
 
 function execQuery(queryFile) {
 
@@ -57,47 +59,72 @@ function execQuery(queryFile) {
     var timerLDF = (endLDF-startLDF);
     // console.log("LDF : " + timerLDF + "ms");
 
+    var queryNumber = queryFile.slice(14,-3);
+
     // Reading LDF results
     console.time("ZZ Query");
     var startZZ = Date.now();
+    if (inArray(naughtyList,queryNumber)) {
+      var zzRes = new ReorderingGraphPatternIterator(new asynciterator.SingletonIterator({}), triplesFull, {fragmentsClient : ldf_serv});
+      zzRes.on('data', function(r){
+        verifSetZZ.add(r);
+        //console.log(r);
+      });
 
-    var waitingAnswer = 0;
-    for (i = 0; i < triples.length; i++) {
-      let s0 = encodeURIComponent(triples[i].subject);
-      let p0 = encodeURIComponent(triples[i].predicate);
-      let o0 = encodeURIComponent(triples[i].object);
-      var cardGetUrl = zz_serv + "/cardi" + "?s=" + s0 + "&p=" + p0 + "&o=" + o0;
+      zzRes.on('end', function(){
+        var endZZ = Date.now();
+        var timerZZ = (endZZ-startZZ);
+        var soundness = soundnessCheck(verifSetZZ,verifSetLDF);
+        var queryNumber = queryFile.slice(14,-3);
 
-      waitingAnswer++;
-      triples[i].reqCard = request(cardGetUrl, function(error, response, body){
-        //var data = JSON.parse(body);
-        waitingAnswer--;
-        if(!waitingAnswer) {
-          var zzRes = starExtractor(triples);
-          zzRes.on('data', function(r){
-            verifSetZZ.add(r);
-            //console.log(r);
-          });
+        var stream = fs.createWriteStream("throughput.csv", {flags:'a'});
+        srvResTime.forEach( function (item,index) {
+            stream.write(item + "\n");
+        });
+        stream.end();
+        console.log(queryNumber + "," + timerLDF + "," + timerZZ + "," + soundness + "," + nbZZCalls);
+      });
+    }
+    else {
+      var waitingAnswer = 0;
+      for (i = 0; i < triples.length; i++) {
+        let s0 = encodeURIComponent(triples[i].subject);
+        let p0 = encodeURIComponent(triples[i].predicate);
+        let o0 = encodeURIComponent(triples[i].object);
+        var cardGetUrl = zz_serv + "/cardi" + "?s=" + s0 + "&p=" + p0 + "&o=" + o0;
 
-          // When finished reading ZZ results, stop timer and test soundness
-          zzRes.on('end', function(){
-            var endZZ = Date.now();
-            var timerZZ = (endZZ-startZZ);
-            var soundness = soundnessCheck(verifSetZZ,verifSetLDF);
-            var queryNumber = queryFile.slice(14,-3);
-
-            var stream = fs.createWriteStream("throughput.csv", {flags:'a'});
-            srvResTime.forEach( function (item,index) {
-                stream.write(item + "\n");
+        waitingAnswer++;
+        triples[i].reqCard = request(cardGetUrl, function(error, response, body){
+          //var data = JSON.parse(body);
+          waitingAnswer--;
+          if(!waitingAnswer) {
+            var zzRes = starExtractor(triples);
+            zzRes.on('data', function(r){
+              verifSetZZ.add(r);
+              //console.log(r);
             });
-            stream.end();
-            console.log(queryNumber + "," + timerLDF + "," + timerZZ + "," + soundness + "," + nbZZCalls);
-          });
-        } else {
-          //console.log(waitingAnswer);
-        }
+
+            // When finished reading ZZ results, stop timer and test soundness
+            zzRes.on('end', function(){
+              var endZZ = Date.now();
+              var timerZZ = (endZZ-startZZ);
+              var soundness = soundnessCheck(verifSetZZ,verifSetLDF);
+              var queryNumber = queryFile.slice(14,-3);
+
+              var stream = fs.createWriteStream("throughput.csv", {flags:'a'});
+              srvResTime.forEach( function (item,index) {
+                stream.write(item + "\n");
+              });
+              stream.end();
+              console.log(queryNumber + "," + timerLDF + "," + timerZZ + "," + soundness + "," + nbZZCalls);
+            });
+          } else {
+            //console.log(waitingAnswer);
+          }
+
         //console.log("card: ", data.value);
       });
+    }
     }
   ;})
 
@@ -181,8 +208,9 @@ function starExtractor(triples) {
   // console.log("triple1: ", triple1, "\ntriple2: ",triple2);
 
   var queryLeft = triples.filter(triple => triple !== triple1 && triple !== triple2)
-
-  if(it != 0 || triple1.subject != triple2.subject /*|| queryLeft[0].cardinality*queryLeft[0].cardinality < triple1.cardinality*triple2.cardinality*/) {
+  //console.log("Square : " + queryLeft[0].triples]);
+  //console.log("Product : " + (triple1.cardinality*triple2.cardinality));
+  if(it != 0 || jt == 0 || triple1.subject != triple2.subject || queryLeft[0].cardinality*queryLeft[0].cardinality < triple1.cardinality*triple2.cardinality) {
     //console.log("@here: no star");
     return new ReorderingGraphPatternIterator(new asynciterator.SingletonIterator({}), triples, options);
   }
