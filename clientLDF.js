@@ -45,84 +45,34 @@ function execQuery(queryFile) {
   var verifSetZZ = new Set();
   var verifSetLDF = new Set();
 
-  var queryNumber = queryFile.slice(14,-3);
+  // Reading ZZ results
+  var startLDF = Date.now();
+  var ldfRes = new ReorderingGraphPatternIterator(new asynciterator.SingletonIterator({}), triplesFull, {fragmentsClient : ldf_serv});
+  ldfRes.on('data', function(r){
+    verifSetLDF.add(r);
+    //console.log(r);
+  });
 
-  // Reading LDF results
-  var startZZ = Date.now();
-  if (inArray(naughtyList,queryNumber)) {
-    var zzRes = new ReorderingGraphPatternIterator(new asynciterator.SingletonIterator({}), triplesFull, {fragmentsClient : ldf_serv});
-    zzRes.on('data', function(r){
-      verifSetZZ.add(r);
-      //console.log(r);
-    });
+  // When finished reading LDF results, stop timer and go to ZZ
+  ldfRes.on('end', function(){
+    var endLDF = Date.now();
+    var timerLDF = (endLDF-startLDF);
+    // console.log("LDF : " + timerLDF + "ms");
+    var queryNumber = queryFile.slice(14,-3);
 
-    zzRes.on('end', function(){
-      var endZZ = Date.now();
-      var timerZZ = (endZZ-startZZ);
 
-      var ldfSet = fs.readFileSync("tmp/verifSetLDF", {encoding : 'utf8'});
-      var ldfTimer = fs.readFileSync("tmp/timerLDF", {encoding : 'utf8'});
+    var streamSet = fs.createWriteStream("tmp/verifSetLDF", {flags:'w'});
+    streamSet.write(JSON.stringify(Array.from(verifSetLDF)));
+    streamSet.end();
 
-      var zzSet = JSON.parse(JSON.stringify(Array.from(verifSetZZ)))
-      var soundness = soundnessCheck(zzSet,JSON.parse(ldfSet));
-      var queryNumber = queryFile.slice(14,-3);
 
-      var stream = fs.createWriteStream("throughput.csv", {flags:'a'});
-      srvResTime.forEach( function (item,index) {
-          stream.write(item + "\n");
-      });
-      stream.end();
-      console.log(queryNumber + "," + ldfTimer + "," + timerZZ + "," + soundness + "," + nbZZCalls);
-    });
-  }
-  else {
-    var waitingAnswer = 0;
-    for (i = 0; i < triples.length; i++) {
-      let s0 = encodeURIComponent(triples[i].subject);
-      let p0 = encodeURIComponent(triples[i].predicate);
-      let o0 = encodeURIComponent(triples[i].object);
-      var cardGetUrl = zz_serv + "/cardi" + "?s=" + s0 + "&p=" + p0 + "&o=" + o0;
-
-      waitingAnswer++;
-      triples[i].reqCard = request(cardGetUrl, function(error, response, body){
-        //var data = JSON.parse(body);
-        waitingAnswer--;
-        if(!waitingAnswer) {
-          var zzRes = starExtractor(triples);
-          zzRes.on('data', function(r){
-            verifSetZZ.add(r);
-            //console.log(r);
-          });
-
-          // When finished reading ZZ results, stop timer and test soundness
-          zzRes.on('end', function(){
-            var endZZ = Date.now();
-            var timerZZ = (endZZ-startZZ);
-            var ldfSet = fs.readFileSync("tmp/verifSetLDF", {encoding : 'utf8'});
-            var ldfTimer = fs.readFileSync("tmp/timerLDF", {encoding : 'utf8'});
-
-            var zzSet = JSON.parse(JSON.stringify(Array.from(verifSetZZ)))
-            var soundness = soundnessCheck(zzSet,JSON.parse(ldfSet));
-
-            var queryNumber = queryFile.slice(14,-3);
-
-            var stream = fs.createWriteStream("throughput.csv", {flags:'a'});
-            srvResTime.forEach( function (item,index) {
-              stream.write(item + "\n");
-            });
-            stream.end();
-            console.log(queryNumber + "," + ldfTimer + "," + timerZZ + "," + soundness + "," + nbZZCalls);
-          });
-        } else {
-          //console.log(waitingAnswer);
-        }
-
-      //console.log("card: ", data.value);
-    });
-  }
-  }
+    var streamTime = fs.createWriteStream("tmp/timerLDF", {flags:'w'});
+    streamTime.write(JSON.stringify(timerLDF));
+    streamTime.end();
+  })
 
 }
+
 
 function starExtractor(triples) {
 
@@ -289,23 +239,14 @@ function evalStar(s1,p1,o1,s2,p2,o2) {
     return star;
 }
 
-function soundnessCheck(set1, set2) {
-  var array1 = Array.from(set1).sort(customSort);
-  var array2 = Array.from(set2).sort(customSort);
-  return true;
-}
-
-function customSort(a, b) {
-
-  var tmpA = Array.from(a).sort();
-  var tmpB = Array.from(b).sort();
-
-  if (JSON.stringify(tmpA) < JSON.stringify(tmpB))
-     return -1;
-  if (JSON.stringify(tmpA) > JSON.stringify(tmpB))
-     return 1;
-     
-  return 0;
+function soundnessCheck(setZZ,setLDF) {
+  var sound = !(setZZ.size != setLDF.size && JSON.stringify(Array.from(setZZ)) != JSON.stringify(Array.from(setLDF)));
+  /*
+  console.log("Sound : " + sound);
+  console.log("LDF size : " + setLDF.size);
+  console.log("ZZ size : " + setZZ.size);
+  */
+  return sound;
 }
 
 var args = process.argv.slice(2);
