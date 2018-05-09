@@ -1,0 +1,40 @@
+{
+  "star": [{
+    "subject": "?v0",
+    "predicate": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+    "object": "http://db.uwaterloo.ca/~galuc/wsdbm/Genre8"
+  },
+    {
+      "subject": "?v0",
+      "predicate": "http://ogp.me/ns#tag",
+      "object": "?v1"
+    }],
+  "remain": [
+
+    {
+      "subject": "?v2",
+      "predicate": "http://db.uwaterloo.ca/~galuc/wsdbm/hasGenre",
+      "object": "?v0"
+    },
+    {
+      "subject": "?v2",
+      "predicate": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+      "object": "?v3"
+    },
+    {
+      "subject": "?v2",
+      "predicate": "http://schema.org/caption",
+      "object": "?v5"
+    },
+    {
+      "subject": "?v2",
+      "predicate": "http://schema.org/contentRating",
+      "object": "?v6"
+    },
+    {
+      "subject": "?v2",
+      "predicate": "http://schema.org/keywords",
+      "object": "?v7"
+    }
+  ]
+}
