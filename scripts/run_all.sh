@@ -1,7 +1,7 @@
 #!/bin/bash
 
-FILE=$1+".csv"
-echo "QueryNumber, LDFtime(ms), ZZtime(ms), soundness, ldftimeout, zzTimeout" > $FILE
+FILE=$1
+echo "Query Number, LDF Time (ms), ZZ Time (ms), Sound & Complete, ZZ Server Calls" > $FILE
 
 # while read -r; do
 #   line="$REPLY"
@@ -10,6 +10,7 @@ echo "QueryNumber, LDFtime(ms), ZZtime(ms), soundness, ldftimeout, zzTimeout" > 
 
 for FILENAME in queries/*.rq;
 do
+  node clientLDF.js $FILENAME
   node client.js $FILENAME >> $FILE
 done
 
